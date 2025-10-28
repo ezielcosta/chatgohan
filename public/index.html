@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ChatGohan Painel</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<div class="wrap"><img src="logo.png" class="logo"/><h1>ChatGohan Dashboard</h1>
+<div class="grid"><div class="card"><h3>🔥 Promoção do Dia</h3><textarea id="promo"></textarea><button onclick="savePromo()">Salvar</button><p class="muted">Promoção será usada pelo bot na opção 2.</p></div>
+<div class="card"><h3>📱 QR Code & Status</h3><div id="qr">Carregando...</div><p id="status" class="muted"></p><button onclick="logout()">Sair</button></div></div>
+<footer>© 2025 Gohan sushi — desenvolvido por Eziel Costa</footer></div>
+<script>
+async function load(){
+  try{ const r=await fetch('/api/promo'); const cfg=await r.json(); document.getElementById('promo').value=cfg.texto||'';}catch(e){}
+  const qrText=await (await fetch('/api/qrcode')).text();
+  const qrEl=document.getElementById('qr');
+  if(qrText.trim()==='CONECTADO'){ qrEl.innerHTML='<div class="muted">✅ Bot conectado</div>'; document.getElementById('status').innerText='Conectado'; }
+  else if(!qrText || qrText.trim()===''){ qrEl.innerHTML='<div class="muted">QR indisponível (bot desconectado)</div>'; document.getElementById('status').innerText='Desconectado';}
+  else { const url='https://api.qrserver.com/v1/create-qr-code/?data='+encodeURIComponent(qrText)+'&size=220x220'; qrEl.innerHTML='<img src="'+url+'" width="220"/>'; document.getElementById('status').innerText='Aguardando conexão';}
+}
+async function savePromo(){ const texto=document.getElementById('promo').value; await fetch('/api/promo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto})}); alert('Promoção salva'); }
+function logout(){ fetch('/api/logout',{method:'POST'}).then(()=>window.location='/login.html'); }
+load(); setInterval(load,5000);
+</script></body></html>

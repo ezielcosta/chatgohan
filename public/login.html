@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login - ChatGohan</title><link rel="stylesheet" href="style.css"></head><body>
+<div class="box"><img src="logo.png" class="logo" alt="logo"><h2>Entrar no Painel</h2>
+<input id="user" placeholder="Usuário" value="admin"><input id="pass" placeholder="Senha" type="password">
+<button onclick="login()">Entrar</button><p id="msg" style="color:#f88"></p></div>
+<script>
+async function login(){
+  const user=document.getElementById('user').value;
+  const pass=document.getElementById('pass').value;
+  const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass})});
+  const j=await res.json();
+  if(j.success) window.location.href='/';
+  else document.getElementById('msg').innerText=j.msg||'Erro';
+}
+</script></body></html>

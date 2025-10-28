@@ -1,0 +1,18 @@
+﻿# DependÃªncias e builds
+node_modules/
+.local-chromium/
+chromium/
+dist/
+build/
+out/
+
+# Cache e logs
+.wwebjs_cache/
+.wwebjs_auth/
+logs/
+*.log
+
+# Sistema e IDE
+.DS_Store
+Thumbs.db
+.env
