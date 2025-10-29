@@ -1,19 +1,25 @@
-// chatbot.js - bot that reads promo.json and replies (uses LocalAuth)
+// chatbot.js - Chatbot Gohan Sushi com Chromium configurado e respostas automáticas
+
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 moment.locale('pt-br');
 
+const fs = require('fs'); // 🔹 Faltava importar o fs
+const path = require('path'); // 🔹 Faltava importar o path
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const chromium = require('chromium'); // <-- necessário para ambiente headless (Railway)
 
+// 🔹 Caminhos principais
 const PROMO_FILE = path.join(__dirname, 'data', 'promo.json');
 const QR_FILE = path.join(__dirname, 'public', 'qr.txt');
 const LOGS = path.join(__dirname, 'logs');
 
+
+// 🔹 Garante diretórios essenciais
 if (!fs.existsSync(LOGS)) fs.mkdirSync(LOGS, { recursive: true });
 
+// 🔹 Função para ler a promoção
 function getPromo() {
   try {
     return JSON.parse(fs.readFileSync(PROMO_FILE, 'utf8'));
@@ -25,45 +31,51 @@ function getPromo() {
   }
 }
 
+// 🔹 Função para registrar logs
 function log(type, who, body) {
   const file = path.join(LOGS, moment().format('YYYY-MM-DD') + '.txt');
   const line = `[${moment().format('HH:mm:ss')}] [${type}] ${who}: ${body}\n`;
   fs.appendFileSync(file, line);
 }
 
-// ✅ Inicialização corrigida com chromium leve + sandbox desativado
+// 🔹 Configuração do cliente WhatsApp com Chromium explícito
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: chromium.path, // caminho para Chromium headless
+    executablePath: '/usr/bin/chromium-browser', // 🔥 Caminho fixo pro ambiente Linux/Railway
     headless: true,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
+      '--disable-extensions',
+      '--disable-gpu',
       '--no-first-run',
       '--no-zygote',
-      '--disable-gpu',
+      '--single-process',
+      '--headless'
     ],
   },
 });
 
+// 🔹 Evento: QR Code gerado
 client.on('qr', (qr) => {
-  qrcode.generate(qr, { small: true });
+  console.log('📱 Novo QR gerado!');
   try {
     fs.writeFileSync(QR_FILE, qr);
   } catch (e) {}
-  console.log('📱 QR gerado. Escaneie com WhatsApp.');
+  qrcode.generate(qr, { small: true });
 });
 
+// 🔹 Evento: pronto (autenticado)
 client.on('ready', () => {
   try {
     fs.writeFileSync(QR_FILE, 'CONECTADO');
   } catch (e) {}
-  console.log('✅ WhatsApp conectado.');
+  console.log('✅ Bot conectado ao WhatsApp com sucesso!');
 });
 
+// 🔹 Evento: desconectado
 client.on('disconnected', (reason) => {
   try {
     fs.writeFileSync(QR_FILE, '');
@@ -71,6 +83,7 @@ client.on('disconnected', (reason) => {
   console.log('⚠️ WhatsApp desconectado:', reason);
 });
 
+// 🔹 Inicializa o bot
 client.initialize();
 
 // ==========================
