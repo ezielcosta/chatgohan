@@ -2,9 +2,9 @@
   "name": "chatgohan",
   "version": "1.0.0",
   "description": "Chatbot WhatsApp Gohan Sushi - versão otimizada para Railway",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "bot": "node chatbot.js",
     "panel": "node server.js"
   },

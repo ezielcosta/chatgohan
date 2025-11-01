@@ -3,18 +3,16 @@
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
-moment.locale('pt-br');
-
-const fs = require('fs'); // 🔹 Faltava importar o fs
-const path = require('path'); // 🔹 Faltava importar o path
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const chromium = require('chromium'); // 🔹 Torna o caminho do Chrome automático
+
+moment.locale('pt-br');
 
 // 🔹 Caminhos principais
 const PROMO_FILE = path.join(__dirname, 'data', 'promo.json');
 const QR_FILE = path.join(__dirname, 'public', 'qr.txt');
 const LOGS = path.join(__dirname, 'logs');
-
 
 // 🔹 Garante diretórios essenciais
 if (!fs.existsSync(LOGS)) fs.mkdirSync(LOGS, { recursive: true });
@@ -42,7 +40,7 @@ function log(type, who, body) {
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: '/usr/bin/chromium-browser', // 🔥 Caminho fixo pro ambiente Linux/Railway
+    executablePath: chromium.path, // 🔥 Usa o caminho dinâmico do chromium instalado
     headless: true,
     args: [
       '--no-sandbox',
