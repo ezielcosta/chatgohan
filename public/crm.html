@@ -1,120 +1,60 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ChatGohan — CRM</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGohan — CRM</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="wrap">
-    <div class="header">
-      <img src="logo.png" class="logo" alt="logo">
-      <div>
-        <div class="h1">CRM — Gohan Sushi</div>
-        <div class="h2">Clientes, pontos, tags e mensagens diretas</div>
-      </div>
-    </div>
+<div class="wrap">
+<div class="header">
+<img src="logo.png" class="logo" alt="logo">
+<div>
+<div class="h1">CRM — Gohan Sushi</div>
+<div class="h2">Clientes, pontos, tags e mensagens diretas</div>
+</div>
+</div>
 
-    <div class="controls" style="margin-bottom:12px">
-      <a class="btn" href="/">Painel</a>
-      <a class="btn" href="/campanhas.html">Campanhas</a>
-      <a class="btn ghost" href="/historico.html">Histórico</a>
-    </div>
 
-    <div class="grid">
-      <div class="card">
-        <h3>Clientes</h3>
-        <input id="search" class="search" placeholder="Buscar por nome ou telefone" />
-        <table class="table" style="margin-top:10px">
-          <thead><tr><th>Nome</th><th>Telefone</th><th>Última</th><th>Pontos</th><th>Tags</th><th></th></tr></thead>
-          <tbody id="clientsBody"></tbody>
-        </table>
-      </div>
+<div class="controls" style="margin-bottom:12px">
+<a class="btn" href="/">Painel</a>
+<a class="btn" href="/campanhas.html">Campanhas</a>
+<a class="btn ghost" href="/historico.html">Histórico</a>
+</div>
 
-      <div class="card">
-        <h3>Detalhes</h3>
-        <div id="empty">Selecione um cliente à esquerda</div>
-        <div id="detailBox" style="display:none">
-          <div class="kv">Nome</div><div id="dName" style="font-weight:700"></div>
-          <div class="kv">Telefone</div><div id="dNum"></div>
-          <div class="kv">Último contato</div><div id="dLast"></div>
-          <div style="margin-top:10px" class="kv">Pontos</div><input id="dPoints" type="number" />
-          <div class="kv" style="margin-top:8px">Tags (vírgula)</div><input id="dTags" type="text" />
-          <div style="margin-top:10px;display:flex;gap:8px">
-            <button class="btn" id="saveClient">Salvar</button>
-            <button class="btn ghost" id="refresh">Atualizar</button>
-          </div>
 
-          <hr style="border-color:rgba(255,255,255,0.03);margin:12px 0" />
+<div class="grid">
+<div class="card">
+<h3>Clientes</h3>
+<input id="search" class="search" placeholder="Buscar por nome ou telefone" />
+<table class="table" style="margin-top:10px">
+<thead><tr><th>Nome</th><th>Telefone</th><th>Última</th><th>Pontos</th><th>Tags</th><th></th></tr></thead>
+<tbody id="clientsBody"></tbody>
+</table>
+</div>
 
-          <div class="kv">Enviar mensagem</div>
-          <textarea id="dMsg" rows="4" class="textarea" placeholder="Use {{name}} para personalizar"></textarea>
-          <div style="margin-top:8px"><button class="btn" id="sendMsg">Enviar</button></div>
-        </div>
-      </div>
-    </div>
 
-    <div class="footer">© 2025 Gohan Sushi</div>
-  </div>
+<div class="card">
+<h3>Detalhes</h3>
+<div id="empty">Selecione um cliente à esquerda</div>
+<div id="detailBox" style="display:none">
+<div class="kv">Nome</div><div id="dName" style="font-weight:700"></div>
+<div class="kv">Telefone</div><div id="dNum"></div>
+<div class="kv">Último contato</div><div id="dLast"></div>
+<div style="margin-top:10px" class="kv">Pontos</div><input id="dPoints" type="number" />
+<div class="kv" style="margin-top:8px">Tags (vírgula)</div><input id="dTags" type="text" />
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn" id="saveClient">Salvar</button>
+<button class="btn ghost" id="refresh">Atualizar</button>
+</div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io();
-let clients = [];
-let selected = null;
 
-async function loadClients(){
-  const r = await fetch('/api/clients');
-  clients = await r.json();
-  renderClients(clients);
-}
-function renderClients(list){
-  const t = document.getElementById('clientsBody'); t.innerHTML = '';
-  for(const c of list){
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${c.nome||'—'}</td><td>${c.numero||'—'}</td><td>${c.ultimoContato||'—'}</td><td>${c.pontos||0}</td><td>${(c.tags||[]).join(', ')}</td><td><button data-num="${c.numero}" class="btn small open">Abrir</button></td>`;
-    t.appendChild(tr);
-  }
-  document.querySelectorAll('.open').forEach(b => b.onclick = () => openClient(b.dataset.num));
-}
+<hr style="border-color:rgba(255,255,255,0.03);margin:12px 0" />
 
-async function openClient(num){
-  const r = await fetch('/api/clients/' + encodeURIComponent(num));
-  const c = await r.json(); selected = c;
-  document.getElementById('empty').style.display='none';
-  document.getElementById('detailBox').style.display='block';
-  document.getElementById('dName').innerText = c.nome || '—';
-  document.getElementById('dNum').innerText = c.numero || '—';
-  document.getElementById('dLast').innerText = c.ultimoContato || '—';
-  document.getElementById('dPoints').value = c.pontos || 0;
-  document.getElementById('dTags').value = (c.tags||[]).join(',');
-}
 
-document.getElementById('saveClient').onclick = async ()=>{
-  if(!selected) return alert('Selecione um cliente');
-  const pts = parseInt(document.getElementById('dPoints').value) || 0;
-  const tags = document.getElementById('dTags').value.split(',').map(s=>s.trim()).filter(Boolean);
-  await fetch('/api/clients/' + encodeURIComponent(selected.numero), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pontos: pts, tags }) });
-  alert('Salvo'); loadClients();
-};
-
-document.getElementById('sendMsg').onclick = async ()=>{
-  if(!selected) return alert('Selecione um cliente');
-  const text = document.getElementById('dMsg').value || '';
-  // cria campanha direta (directTo)
-  await fetch('/api/campaigns', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title: 'Direta', message: text, filter:{}, directTo: selected.numero }) });
-  alert('Mensagem agendada para envio (o bot processará).');
-};
-
-document.getElementById('search').addEventListener('input',(e)=>{
-  const q = e.target.value.toLowerCase();
-  renderClients(clients.filter(c => (c.nome||'').toLowerCase().includes(q) || (c.numero||'').toLowerCase().includes(q)));
-});
-
-socket.on('clients-updated', (list) => { clients = list; renderClients(clients); });
-socket.on('bot-event', ev => { console.log('bot:', ev); });
-loadClients();
-</script>
-</body>
+<div class="kv">Enviar mensagem</div>
+<textarea id="dMsg" rows="4" class="textarea" placeholder="Use {{name}} para personalizar"></textarea>
+<div style="margin-top:8px"><button class="btn" id="sendMsg">Enviar</button></div>
+</div>
 </html>
