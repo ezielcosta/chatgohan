@@ -1,18 +1,9 @@
-﻿# DependÃªncias e builds
-node_modules/
+﻿node_modules/
+.wwebjs_auth
+.whatsapp-web.js-session
 .local-chromium/
 chromium/
-dist/
-build/
-out/
-
-# Cache e logs
-.wwebjs_cache/
-.wwebjs_auth/
-logs/
-*.log
-
-# Sistema e IDE
-.DS_Store
-Thumbs.db
+node_modules/chromium/lib/chromium/
+public/qr.txt
+data/*.db
 .env

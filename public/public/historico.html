@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Histórico de Pedidos — ChatGohan</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{background:#000;color:#eee;font-family:Inter,system-ui;}
+  .wrap{max-width:1100px;margin:20px auto;padding:18px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #111}
+  .btn{padding:8px 10px;border-radius:8px;background:#2b7;color:#000;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/"><button class="btn">Voltar</button></a>
+  <h1>Histórico de Pedidos</h1>
+  <p><button onclick="exportCSV()" class="btn">Exportar CSV</button></p>
+  <div style="height:560px;overflow:auto;background:#081018;padding:10px;border-radius:8px">
+    <table id="table">
+      <thead><tr><th>ID</th><th>Data</th><th>Nome</th><th>Telefone</th><th>Pedido</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+async function load(){
+  const r = await fetch('/api/pedidos');
+  const dados = await r.json();
+  const body = document.getElementById('body'); body.innerHTML = '';
+  for(const p of dados){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.id}</td><td>${p.createdAt}</td><td>${p.nome||''}</td><td>${p.numero||''}</td><td>${p.pedido||''}</td><td>${p.valor||''}</td><td>${p.status||''}</td>`;
+    body.appendChild(tr);
+  }
+}
+async function exportCSV(){
+  window.location = '/api/pedidos/export';
+}
+load();
+</script>
+</body>
+</html>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Histórico de Pedidos — ChatGohan</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{background:#000;color:#eee;font-family:Inter,system-ui;}
+  .wrap{max-width:1100px;margin:20px auto;padding:18px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #111}
+  .btn{padding:8px 10px;border-radius:8px;background:#2b7;color:#000;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/"><button class="btn">Voltar</button></a>
+  <h1>Histórico de Pedidos</h1>
+  <p><button onclick="exportCSV()" class="btn">Exportar CSV</button></p>
+  <div style="height:560px;overflow:auto;background:#081018;padding:10px;border-radius:8px">
+    <table id="table">
+      <thead><tr><th>ID</th><th>Data</th><th>Nome</th><th>Telefone</th><th>Pedido</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+</div>
+<script>
+async function load(){
+  const r = await fetch('/api/pedidos');
+  const dados = await r.json();
+  const body = document.getElementById('body'); body.innerHTML = '';
+  for(const p of dados){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.id}</td><td>${p.createdAt}</td><td>${p.nome||''}</td><td>${p.numero||''}</td><td>${p.pedido||''}</td><td>${p.valor||''}</td><td>${p.status||''}</td>`;
+    body.appendChild(tr);
+  }
+}
+async function exportCSV(){
+  window.location = '/api/pedidos/export';
+}
+load();
+</script>
+</body>
+</html>

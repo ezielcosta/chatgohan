@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChatGohan — CRM</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{background:#000;color:#eee;font-family:Inter,system-ui,Segoe UI,Roboto;}
+  .wrap{max-width:1100px;margin:24px auto;padding:18px;}
+  .grid{display:flex;gap:14px}
+  .panel{background:#0f0f12;padding:14px;border-radius:10px;border:1px solid #1a1a1a;}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid #181818;text-align:left}
+  .btn{background:#2b7;border:none;padding:8px 10px;border-radius:8px;color:#000;cursor:pointer}
+  input,textarea{background:#0b0b0b;border:1px solid #222;color:#fff;padding:8px;border-radius:6px;width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CRM — ChatGohan</h1>
+  <div style="margin-bottom:12px">
+    <a href="/"><button class="btn">Voltar</button></a>
+    <a href="/campanhas.html"><button class="btn" style="background:#2b2">Campanhas</button></a>
+  </div>
+
+  <div class="grid">
+    <div class="panel" style="flex:1.6">
+      <h3>Clientes</h3>
+      <input id="search" placeholder="Buscar por nome ou número" />
+      <div style="height:420px;overflow:auto;margin-top:8px">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Última</th><th>Pontos</th><th></th></tr></thead>
+          <tbody id="clients-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" style="flex:0.9">
+      <h3>Detalhes</h3>
+      <div id="empty">Selecione um cliente</div>
+      <div id="details" style="display:none">
+        <p><b id="d-name"></b> — <span id="d-num"></span></p>
+        <p><i id="d-last"></i></p>
+        <p>Pontos: <input id="d-points" type="number" /></p>
+        <p>Tags (vírgula): <input id="d-tags"/></p>
+        <p><button id="save-client" class="btn">Salvar</button></p>
+
+        <h4>Enviar mensagem</h4>
+        <textarea id="d-msg" rows="4" placeholder="Mensagem... use {{name}}"></textarea>
+        <p><button id="send-msg" class="btn">Enviar</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let clients = [];
+let current = null;
+
+async function loadClients(){
+  const r = await fetch('/api/clients');
+  clients = await r.json();
+  renderClients(clients);
+}
+function renderClients(list){
+  const body = document.getElementById('clients-body'); body.innerHTML = '';
+  for(const c of list){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${c.nome||''}</td><td>${c.numero||''}</td><td>${c.ultimoContato||''}</td><td>${c.pontos||0}</td>
+      <td><button data-num="${c.numero}" class="open">Abrir</button></td>`;
+    body.appendChild(tr);
+  }
+  document.querySelectorAll('.open').forEach(b => b.onclick = () => openClient(b.dataset.num));
+}
+async function openClient(num){
+  const r = await fetch('/api/clients/' + encodeURIComponent(num));
+  const c = await r.json();
+  current = c;
+  document.getElementById('empty').style.display='none';
+  document.getElementById('details').style.display='block';
+  document.getElementById('d-name').innerText = c.nome || '';
+  document.getElementById('d-num').innerText = c.numero || '';
+  document.getElementById('d-last').innerText = c.ultimoContato || '';
+  document.getElementById('d-points').value = c.pontos || 0;
+  document.getElementById('d-tags').value = (c.tags||[]).join(',');
+}
+document.getElementById('save-client').onclick = async ()=>{
+  if(!current) return alert('Selecione um cliente');
+  const pts = parseInt(document.getElementById('d-points').value)||0;
+  const tags = document.getElementById('d-tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  await fetch('/api/clients/' + encodeURIComponent(current.numero), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pontos: pts, tags }) });
+  await loadClients(); alert('Salvo');
+};
+document.getElementById('send-msg').onclick = async ()=>{
+  if(!current) return alert('Selecione um cliente');
+  const text = document.getElementById('d-msg').value || '';
+  // create campaign direct to this number
+  await fetch('/api/campaigns', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title:'Mensagem direta', message:text, filter:{}, directTo: current.numero }) });
+  alert('Mensagem agendada (envio processado pelo bot).');
+};
+
+document.getElementById('search').addEventListener('input', (e)=>{
+  const q = e.target.value.toLowerCase();
+  const f = clients.filter(c => (c.nome||'').toLowerCase().includes(q) || (c.numero||'').toLowerCase().includes(q));
+  renderClients(f);
+});
+
+socket.on('clients-updated', (list) => { clients = list; renderClients(clients); });
+socket.on('bot-event', (ev) => { console.log('bot-event', ev); });
+loadClients();
+</script>
+</body>
+</html>

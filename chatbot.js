@@ -1,157 +1,202 @@
-// chatbot.js - Chatbot Gohan Sushi com Chromium configurado e respostas automáticas
-
+// chatbot.js
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const chromium = require('chromium'); // 🔹 Torna o caminho do Chrome automático
-
+const axios = require('axios'); // fetch server endpoints
 moment.locale('pt-br');
 
-// 🔹 Caminhos principais
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+
+let chromiumPath;
+try { chromiumPath = require('chromium').path; } catch(e) { chromiumPath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'; }
+
 const PROMO_FILE = path.join(__dirname, 'data', 'promo.json');
+const CLIENTS_FILE = path.join(__dirname, 'data', 'clients.json');
+const CAMPAIGNS_FILE = path.join(__dirname, 'data', 'campaigns.json');
 const QR_FILE = path.join(__dirname, 'public', 'qr.txt');
 const LOGS = path.join(__dirname, 'logs');
-
-// 🔹 Garante diretórios essenciais
 if (!fs.existsSync(LOGS)) fs.mkdirSync(LOGS, { recursive: true });
 
-// 🔹 Função para ler a promoção
-function getPromo() {
-  try {
-    return JSON.parse(fs.readFileSync(PROMO_FILE, 'utf8'));
-  } catch (e) {
-    return {
-      texto: '🔥 Promoção indisponível',
-      linkCardapio: 'https://pedido.anota.ai/',
-    };
-  }
+function readJson(p){ try{ return JSON.parse(fs.readFileSync(p,'utf8')); }catch(e){ return null; } }
+function writeJson(p,o){ fs.writeFileSync(p, JSON.stringify(o,null,2)); }
+
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000'; // para /api/notify (quando bot e server em processos separados)
+const SEND_INTERVAL = parseInt(process.env.CAMPAIGN_CHECK_MS) || 10_000; // 10s
+
+function notifyServer(type,payload){
+  // non-blocking
+  axios.post(`${SERVER_URL}/api/notify`, { type, payload }).catch(()=>{});
 }
 
-// 🔹 Função para registrar logs
-function log(type, who, body) {
-  const file = path.join(LOGS, moment().format('YYYY-MM-DD') + '.txt');
-  const line = `[${moment().format('HH:mm:ss')}] [${type}] ${who}: ${body}\n`;
-  fs.appendFileSync(file, line);
-}
+function getPromo(){ return readJson(PROMO_FILE) || { texto: 'Promo indisponível', linkCardapio:'https://pedido.anota.ai/' }; }
 
-// 🔹 Configuração do cliente WhatsApp com Chromium explícito
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: chromium.path, // 🔥 Usa o caminho dinâmico do chromium instalado
+    executablePath: chromiumPath,
     headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-extensions',
-      '--disable-gpu',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--headless'
-    ],
-  },
+    args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--no-first-run','--no-zygote','--disable-gpu']
+  }
 });
 
-// 🔹 Evento: QR Code gerado
-client.on('qr', (qr) => {
-  console.log('📱 Novo QR gerado!');
-  try {
-    fs.writeFileSync(QR_FILE, qr);
-  } catch (e) {}
+client.on('qr', qr => {
+  console.log('📱 QR gerado. Escaneie com WhatsApp.');
+  try { fs.writeFileSync(QR_FILE, qr); } catch(e){}
   qrcode.generate(qr, { small: true });
+  notifyServer('qr-generated', { qr: 'generated' });
 });
 
-// 🔹 Evento: pronto (autenticado)
 client.on('ready', () => {
-  try {
-    fs.writeFileSync(QR_FILE, 'CONECTADO');
-  } catch (e) {}
-  console.log('✅ Bot conectado ao WhatsApp com sucesso!');
+  console.log('✅ WhatsApp conectado.');
+  try { fs.writeFileSync(QR_FILE, 'CONECTADO'); } catch(e){}
+  notifyServer('bot-ready', {});
 });
 
-// 🔹 Evento: desconectado
 client.on('disconnected', (reason) => {
-  try {
-    fs.writeFileSync(QR_FILE, '');
-  } catch (e) {}
   console.log('⚠️ WhatsApp desconectado:', reason);
+  try { fs.writeFileSync(QR_FILE, ''); } catch(e){}
+  notifyServer('bot-disconnected', { reason });
 });
 
-// 🔹 Inicializa o bot
 client.initialize();
 
-// ==========================
-// Lógica de mensagens
-// ==========================
-client.on('message', async (msg) => {
+// Save or update client
+function saveLead(number, name, lastMessage){
+  let clients = readJson(CLIENTS_FILE) || [];
+  let c = clients.find(x=>x.number===number);
+  if (c) {
+    c.name = name || c.name;
+    c.lastMessage = lastMessage || c.lastMessage;
+    c.updatedAt = new Date().toISOString();
+  } else {
+    c = { number, name, lastMessage, createdAt: new Date().toISOString(), points:0, tags: [] };
+    clients.push(c);
+  }
+  writeJson(CLIENTS_FILE, clients);
+  // notify server
+  notifyServer('new-lead', c);
+}
+
+client.on('message', async msg => {
   if (!msg.from || !msg.from.endsWith('@c.us')) return;
   const raw = typeof msg.body === 'string' ? msg.body.trim() : '';
   const body = raw.toLowerCase();
-  log('RECEBIDO', msg.from, raw || `<${msg.type}>`);
+  const contact = await msg.getContact();
+  const name = contact.pushname || contact.number || 'cliente';
+  saveLead(contact.number, name, raw);
 
+  notifyServer('message-received', { from: contact.number, body: raw, name });
+
+  // menu and replies
   if (body.match(/\b(oi|ola|olá|menu|start|iniciar)\b/i)) {
     const promo = getPromo();
     const welcome = [
       '🥢 *Bem-vindo ao Gohan Sushi!*',
-      '🍣 *A melhor experiência japonesa de Santarém.*',
       '',
       'Escolha uma opção:',
-      '1️⃣ *Cardápio completo*',
-      '2️⃣ *Promoção do dia*',
-      '3️⃣ *Fazer pedido*',
-      '4️⃣ *Falar com atendente*',
+      '1️⃣ Cardápio',
+      '2️⃣ Promoção do dia',
+      '3️⃣ Fazer pedido',
+      '4️⃣ Falar com atendente',
       '',
-      `📱 Cardápio online: ${promo.linkCardapio}`,
+      `🔗 Cardápio: ${promo.linkCardapio}`
     ].join('\n');
     await msg.reply(welcome);
-    log('ENVIADO', msg.from, welcome);
+    notifyServer('message-sent', { to: contact.number, text: welcome });
     return;
   }
 
   if (body === '1') {
     const promo = getPromo();
-    const resposta = `🍱 *Cardápio completo:*\n${promo.linkCardapio}\n\nPara pedir, digite *3*.`;
-    await msg.reply(resposta);
-    log('ENVIADO', msg.from, resposta);
+    const text = `🍱 Cardápio: ${promo.linkCardapio}`;
+    await msg.reply(text);
+    notifyServer('message-sent', { to: contact.number, text });
     return;
   }
-
   if (body === '2') {
     const promo = getPromo();
-    const resposta = `🔥 *Promoção do Dia:*\n${promo.texto}`;
-    await msg.reply(resposta);
-    log('ENVIADO', msg.from, resposta);
+    const text = `🔥 Promoção do Dia:\n${promo.texto}`;
+    await msg.reply(text);
+    notifyServer('message-sent', { to: contact.number, text });
     return;
   }
-
   if (body === '3') {
-    const resposta =
-      '🍱 *Para fazer seu pedido:*\n\nEnvie no formato:\n*PEDIDO:* (nome do prato e quantidade)\n*ENDEREÇO:* (rua, número, bairro)\n*PAGAMENTO:* (pix, dinheiro, cartão)\n\nNosso atendente confirma o pedido em instantes.';
-    await msg.reply(resposta);
-    log('ENVIADO', msg.from, resposta);
-    return;
-  }
-
-  if (body === '4') {
-    const resposta =
-      '👩‍💼 *Atendimento humano:* O atendente responde por este número. Aguarde um instante.';
-    await msg.reply(resposta);
-    log('ENVIADO', msg.from, resposta);
+    const text = 'Envie seu pedido no formato:\nPEDIDO: ...\nENDEREÇO: ...\nPAGAMENTO: ...';
+    await msg.reply(text);
+    notifyServer('message-sent', { to: contact.number, text });
     return;
   }
 
   if (body.startsWith('pedido:')) {
-    const resposta = '✅ Pedido recebido! Em instantes confirmaremos os detalhes.';
-    await msg.reply(resposta);
-    log('ENVIADO', msg.from, resposta);
+    const text = '✅ Pedido recebido! Em instantes confirmamos.';
+    await msg.reply(text);
+    notifyServer('order-received', { from: contact.number, body: raw });
+    // also persist order to server API
+    axios.post(`${SERVER_URL}/api/orders`, {
+      number: contact.number,
+      name,
+      pedido: raw,
+      endereco: '',
+      pagamento: ''
+    }).catch(()=>{});
     return;
   }
 
-  const fallback = '❓ *Não entendi.* Digite *menu* para ver as opções ou *1* para cardápio.';
+  const fallback = '❓ Não entendi. Digite "menu" para ver as opções.';
   await msg.reply(fallback);
-  log('ENVIADO', msg.from, fallback);
+  notifyServer('message-sent', { to: contact.number, text: fallback });
 });
+
+// Campaign sender (polls campaigns.json for pending)
+async function processCampaigns(){
+  const campaigns = readJson(CAMPAIGNS_FILE) || [];
+  const clients = readJson(CLIENTS_FILE) || [];
+  for (const c of campaigns.filter(x => x.status === 'pending')) {
+    // build filter
+    const filter = c.filter || {};
+    const minPoints = filter.minPoints || 0;
+    const tag = filter.tag || null;
+    const limit = filter.limit || 0;
+
+    const targets = clients.filter(cl => {
+      if (cl.points < minPoints) return false;
+      if (tag && (!cl.tags || !cl.tags.includes(tag))) return false;
+      return true;
+    });
+
+    let sentCount = 0;
+    for (const t of targets) {
+      if (limit && sentCount >= limit) break;
+      try {
+        // send message (template may have {{name}})
+        const msgText = (c.message || '').replace(/{{name}}/g, t.name || '');
+        await client.sendMessage(`${t.number}`, msgText);
+        sentCount++;
+        // record sent
+        c.sent = c.sent || [];
+        c.sent.push({ number: t.number, when: new Date().toISOString() });
+        // notify server
+        notifyServer('campaign-sent', { campaignId: c.id, to: t.number });
+      } catch (err) {
+        console.error('error sending to', t.number, err && err.message);
+      }
+      // small delay to avoid flood
+      await new Promise(r => setTimeout(r, 800));
+    }
+    c.status = 'sent';
+    c.sentCount = sentCount;
+    writeJson(CAMPAIGNS_FILE, campaigns);
+    // update server-side copy if exists
+    try { await axios.post(`${SERVER_URL}/api/campaigns/${c.id}/mark-sent`, { status: 'sent' }); } catch(e){}
+  }
+}
+
+// start polling loop
+setInterval(() => {
+  processCampaigns().catch(()=>{});
+}, SEND_INTERVAL);
+
+// safe start
+process.on('uncaughtException', err => console.error('UNCAUGHT', err));
+process.on('unhandledRejection', err => console.error('UNHANDLED', err));

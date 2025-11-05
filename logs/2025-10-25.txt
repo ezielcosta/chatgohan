@@ -1,0 +1,2 @@
+[17:50:22] [RECEBIDO] 559392229890@c.us: <notification_template>
+[17:50:47] [ENVIADO] 559392229890@c.us: ❓ *Não entendi.* Digite *menu* para ver as opções ou *1* para cardápio.
