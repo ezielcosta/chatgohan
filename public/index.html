@@ -1,53 +1,57 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ChatGohan Painel</title>
-<link rel="stylesheet" href="style.css">
-<style>
-  body{background:#0b0b0b;color:#eee;font-family:Inter,system-ui,Segoe UI,Roboto;}
-  .wrap{max-width:1100px;margin:28px auto;padding:18px;}
-  .card{background:#0f0f12;padding:18px;border-radius:12px;margin-bottom:14px;border:1px solid #1f1f1f;}
-  .grid{display:flex;gap:14px;flex-wrap:wrap}
-  .logo{height:56px}
-  .muted{color:#999}
-  a.button{display:inline-block;padding:10px 14px;border-radius:10px;background:#1f7a1f;color:#fff;text-decoration:none;margin-right:8px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGohan — Painel</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
-  <div style="display:flex;align-items:center;gap:12px;">
-    <img src="logo.png" class="logo" alt="logo" />
-    <div>
-      <h1 style="margin:0">ChatGohan Dashboard</h1>
-      <div class="muted">Painel administrativo · Gohan Sushi</div>
+  <div class="wrap">
+    <div class="header">
+      <img src="logo.png" class="logo" alt="Gohan logo">
+      <div>
+        <div class="h1">ChatGohan Dashboard — Gohan Sushi</div>
+        <div class="h2">Painel administrativo · QR, promo, CRM e campanhas</div>
+      </div>
     </div>
-  </div>
 
-  <div style="margin-top:18px;">
-    <a class="button" href="/crm.html">CRM</a>
-    <a class="button" href="/campanhas.html">Campanhas</a>
-    <a class="button" href="/historico.html">Histórico</a>
-  </div>
-
-  <div class="card" style="margin-top:18px">
-    <h3>📱 QR Code & Status</h3>
-    <div id="qr">Carregando...</div>
-    <p id="status" class="muted"></p>
-    <p class="muted">Escaneie o QR com o WhatsApp do restaurante para conectar o bot.</p>
-  </div>
-
-  <div class="card">
-    <h3>🔥 Promoção do Dia</h3>
-    <textarea id="promo" style="width:100%;height:86px;background:#0b0b0b;color:#fff;border:1px solid #222;padding:10px;border-radius:8px"></textarea>
-    <div style="margin-top:8px">
-      <button onclick="savePromo()" style="padding:8px 12px;border-radius:8px;background:#2b2;color:#000;border:none">Salvar</button>
+    <div class="controls">
+      <a class="btn" href="/crm.html">CRM</a>
+      <a class="btn" href="/campanhas.html">Campanhas</a>
+      <a class="btn" href="/historico.html">Histórico</a>
+      <a class="btn ghost" href="/logout">Sair</a>
     </div>
-  </div>
 
-  <footer class="muted" style="margin-top:18px">© 2025 Gohan Sushi — desenvolvido por Eziel Costa</footer>
-</div>
+    <div class="grid">
+      <div class="card">
+        <h3>📱 QR Code & Status</h3>
+        <div id="qrArea" class="qrbox">
+          <div id="qr">Carregando...</div>
+          <div>
+            <div id="statusText" class="status disconnected">Desconectado</div>
+            <div class="kv" style="margin-top:8px">Escaneie com o WhatsApp do restaurante para conectar o bot.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🔥 Promoção do Dia</h3>
+        <textarea id="promo" rows="6" class="textarea"></textarea>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn" onclick="savePromo()">Salvar Promo</button>
+          <button class="btn ghost" onclick="location.reload()">Atualizar</button>
+        </div>
+        <div class="small" style="margin-top:8px">Link do cardápio e demais informações aparecem automaticamente no menu do bot.</div>
+      </div>
+    </div>
+
+    <div class="card small" style="margin-top:18px">
+      <strong>Nota do desenvolvedor:</strong> mantenha a sessão do WhatsApp persistida em `.wwebjs_auth` para evitar re-logins.
+    </div>
+
+    <div class="footer">© 2025 Gohan Sushi — desenvolvido por Eziel Costa</div>
+  </div>
 
 <script>
 async function load(){
@@ -58,14 +62,20 @@ async function load(){
   try{
     const qrText = await (await fetch('/api/qrcode')).text();
     const qrEl = document.getElementById('qr');
+    const status = document.getElementById('statusText');
     if (qrText.trim() === 'CONECTADO') {
-      qrEl.innerHTML = '<div style="color:#2ecc71">✅ Bot conectado</div>'; document.getElementById('status').innerText = 'Conectado';
+      qrEl.innerHTML = '<div style="color:var(--success);font-weight:700">✅ Conectado</div>';
+      status.className = 'status connected';
+      status.innerText = 'Conectado';
     } else if (!qrText || qrText.trim() === '') {
-      qrEl.innerHTML = '<div class="muted">QR indisponível (bot desconectado)</div>'; document.getElementById('status').innerText = 'Desconectado';
+      qrEl.innerHTML = '<div class="small">QR indisponível (bot desconectado)</div>';
+      status.className = 'status disconnected';
+      status.innerText = 'Desconectado';
     } else {
       const url = 'https://api.qrserver.com/v1/create-qr-code/?data=' + encodeURIComponent(qrText) + '&size=220x220';
-      qrEl.innerHTML = '<img src="'+url+'" width="220"/>';
-      document.getElementById('status').innerText = 'Aguardando escaneamento';
+      qrEl.innerHTML = '<img src="'+url+'" width="220" alt="QR"/>';
+      status.className = 'status waiting';
+      status.innerText = 'Aguardando escaneamento';
     }
   }catch(e){}
 }

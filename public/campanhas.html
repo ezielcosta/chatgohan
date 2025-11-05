@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGohan — Campanhas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <img src="logo.png" class="logo" alt="logo">
+      <div><div class="h1">Campanhas</div><div class="h2">Envio em massa filtrado</div></div>
+    </div>
+
+    <div style="margin-top:14px" class="controls">
+      <a class="btn" href="/">Painel</a>
+      <a class="btn" href="/crm.html">CRM</a>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Criar campanha</h3>
+      <div class="kv">Título</div><input id="title" />
+      <div class="kv" style="margin-top:8px">Mensagem (use {{name}})</div><textarea id="message" rows="4" class="textarea"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="flex:1"><div class="kv">Pontos mínimos</div><input id="minpoints" type="number" value="0" /></div>
+        <div style="flex:1"><div class="kv">Tag (opcional)</div><input id="tag" /></div>
+        <div style="width:120px"><div class="kv">Limite</div><input id="limit" type="number" value="0" /></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" id="create">Criar campanha</button></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Campanhas existentes</h3>
+      <div id="list"></div>
+    </div>
+
+    <div class="footer">© 2025 Gohan Sushi</div>
+  </div>
+
+<script>
+async function load(){
+  const r = await fetch('/api/campaigns'); const cs = await r.json();
+  const el = document.getElementById('list'); el.innerHTML = '';
+  for(const c of cs){
+    const div = document.createElement('div'); div.style.padding='10px'; div.style.borderBottom='1px solid rgba(255,255,255,0.03)';
+    div.innerHTML = `<b>${c.title}</b> — ${c.status || 'pending'} — enviados: ${c.sentCount||0}<div style="margin-top:6px"><small>${c.message||''}</small></div>`;
+    el.appendChild(div);
+  }
+}
+document.getElementById('create').onclick = async ()=>{
+  const body = {
+    title: document.getElementById('title').value || 'Campanha',
+    message: document.getElementById('message').value || '',
+    filter: { minPoints: parseInt(document.getElementById('minpoints').value) || 0, tag: (document.getElementById('tag').value||'').trim() || null, limit: parseInt(document.getElementById('limit').value) || 0 }
+  };
+  const r = await fetch('/api/campaigns', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json();
+  alert('Campanha criada: ' + j.campaign.id);
+  load();
+};
+load();
+</script>
+</body>
+</html>

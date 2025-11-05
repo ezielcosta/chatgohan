@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ChatGohan — Histórico</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <img src="logo.png" class="logo" alt="logo">
+      <div><div class="h1">Histórico de Pedidos</div><div class="h2">Export CSV e detalhes</div></div>
+    </div>
+
+    <div class="controls">
+      <a class="btn" href="/">Painel</a>
+      <a class="btn" href="/crm.html">CRM</a>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Pedidos</h3>
+        <div>
+          <button class="btn" onclick="exportCSV()">Exportar CSV</button>
+          <button class="btn ghost" onclick="load()">Atualizar</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;height:460px;overflow:auto">
+        <table class="table">
+          <thead><tr><th>ID</th><th>Data</th><th>Nome</th><th>Telefone</th><th>Pedido</th><th>Valor</th><th>Status</th></tr></thead>
+          <tbody id="body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">© 2025 Gohan Sushi</div>
+  </div>
+
+<script>
+async function load(){
+  const r = await fetch('/api/pedidos');
+  const dados = await r.json();
+  const body = document.getElementById('body'); body.innerHTML = '';
+  for(const p of dados){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.id}</td><td>${p.createdAt}</td><td>${p.nome||''}</td><td>${p.numero||''}</td><td>${p.pedido||''}</td><td>${p.valor||''}</td><td>${p.status||''}</td>`;
+    body.appendChild(tr);
+  }
+}
+function exportCSV(){ window.location = '/api/pedidos/export'; }
+load();
+</script>
+</body>
+</html>
